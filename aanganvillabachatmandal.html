@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    <!DOCTYPE html>
+<html lang="gu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>બચત મંડળ - સભ્ય પોર્ટલ</title>
+    <link href="https://docs.google.com/spreadsheets/d/1cBWyAcU-4YhP4RvBmg46WOhenlTyKSTrR4qtTJvNh2g/edit?gid=308421034#gid=308421034" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+        }
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .login-container {
+            max-width: 450px;
+            margin: 50px auto;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .login-header {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 10px 10px 0 0;
+            padding: 20px;
+            text-align: center;
+        }
+        .login-body {
+            padding: 30px;
+            background-color: white;
+            border-radius: 0 0 10px 10px;
+        }
+        .form-label {
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            border: none;
+            padding: 10px;
+            font-weight: 500;
+        }
+        .btn-primary:hover {
+            background-color: #1a252f;
+        }
+        .member-details {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        .detail-row {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <div class="login-header">
+                <h4>બચત મંડળ સભ્ય પોર્ટલ</h4>
+            </div>
+            <div class="login-body">
+                <!-- Mobile Input Step -->
+                <div id="mobileStep">
+                    <div class="mb-4">
+                        <label for="mobile" class="form-label">રજિસ્ટર્ડ મોબાઇલ નંબર</label>
+                        <input type="tel" class="form-control" id="mobile" placeholder="દાખલ કરો" maxlength="10">
+                    </div>
+                    <button id="sendOTPBtn" class="btn btn-primary w-100" onclick="sendOTP()">
+                        <span id="sendOTPText">OTP મેળવો</span>
+                        <span id="sendOTPSpinner" class="spinner-border spinner-border-sm" style="display: none;"></span>
+                    </button>
+                </div>
+
+                <!-- OTP Verification Step -->
+                <div id="otpStep" style="display: none;">
+                    <div class="mb-4">
+                        <label for="otp" class="form-label">OTP</label>
+                        <input type="number" class="form-control" id="otp" placeholder="6 અંકનો OTP" maxlength="6">
+                        <small class="text-muted">તમારા મોબાઇલ પર મળેલ OTP દાખલ કરો</small>
+                    </div>
+                    <button id="verifyOTPBtn" class="btn btn-primary w-100 mb-2" onclick="verifyOTP()">
+                        <span id="verifyOTPText">પ્રવેશ કરો</span>
+                        <span id="verifyOTPSpinner" class="spinner-border spinner-border-sm" style="display: none;"></span>
+                    </button>
+                    <a href="#" class="text-decoration-none" onclick="resendOTP()">OTP ફરી મોકલો</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Member Details -->
+        <div id="memberDetails" class="member-details" style="display: none;">
+            <h5 class="text-center mb-4">તમારી બચત વિગતો</h5>
+            <div id="detailsContainer">
+                <!-- Details will be loaded here -->
+            </div>
+            <button class="btn btn-outline-secondary w-100 mt-3" onclick="logout()">લોગઆઉટ કરો</button>
+        </div>
+    </div>
+
+    <script>
+        // Replace with your deployed Google Apps Script URL
+        const API_URL = "YOUR_GOOGLE_SCRIPT_URL";
+        let currentMobile = "";
+
+        function sendOTP() {
+            currentMobile = document.getElementById('mobile').value.trim();
+            
+            if (!currentMobile || currentMobile.length !== 10 || isNaN(currentMobile)) {
+                alert("મહેરબાની કરીને માન્ય 10-અંકનો મોબાઇલ નંબર દાખલ કરો");
+                return;
+            }
+
+            // Show loading
+            toggleLoading('sendOTPBtn', true);
+            
+            fetch(`${API_URL}?action=sendOTP&mobile=${currentMobile}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "success") {
+                        alert(`Demo OTP: ${data.otp}\n(Productionમાં આ SMS થી મોકલવામાં આવશે)`);
+                        document.getElementById('mobileStep').style.display = "none";
+                        document.getElementById('otpStep').style.display = "block";
+                        document.getElementById('otp').focus();
+                    } else {
+                        alert("ત્રુટિ: " + (data.message || "OTP મોકલવામાં અસમર્થ"));
+                    }
+                })
+                .catch(error => {
+                    alert("Network error: " + error.message);
+                })
+                .finally(() => {
+                    toggleLoading('sendOTPBtn', false);
+                });
+        }
+
+        function verifyOTP() {
+            const otp = document.getElementById('otp').value.trim();
+            
+            if (!otp || otp.length !== 6 || isNaN(otp)) {
+                alert("મહેરબાની કરીને માન્ય 6-અંકનો OTP દાખલ કરો");
+                return;
+            }
+
+            toggleLoading('verifyOTPBtn', true);
+            
+            fetch(`${API_URL}?action=verifyOTP&mobile=${currentMobile}&otp=${otp}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "success") {
+                        showMemberDetails(data.memberData);
+                    } else {
+                        alert("ત્રુટિ: " + (data.message || "Invalid OTP"));
+                    }
+                })
+                .catch(error => {
+                    alert("Network error: " + error.message);
+                })
+                .finally(() => {
+                    toggleLoading('verifyOTPBtn', false);
+                });
+        }
+
+        function showMemberDetails(memberData) {
+            const detailsContainer = document.getElementById('detailsContainer');
+            detailsContainer.innerHTML = `
+                <div class="detail-row">
+                    <span class="detail-label">સભ્ય ID:</span>
+                    <span>${memberData.member_id || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">નામ:</span>
+                    <span>${memberData.name || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">મોબાઇલ નંબર:</span>
+                    <span>${memberData.mobile || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">કુલ બચત:</span>
+                    <span>₹${memberData.total_savings ? Number(memberData.total_savings).toLocaleString('en-IN') : '0'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">છેલ્લી ચુકવણી:</span>
+                    <span>${memberData.last_payment ? formatDate(memberData.last_payment) : 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">આગામી સભા:</span>
+                    <span>${memberData.next_meeting ? formatDate(memberData.next_meeting) : 'N/A'}</span>
+                </div>
+            `;
+
+            document.getElementById('otpStep').style.display = "none";
+            document.getElementById('memberDetails').style.display = "block";
+        }
+
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString('gu-IN', options);
+        }
+
+        function resendOTP() {
+            document.getElementById('otp').value = "";
+            sendOTP();
+        }
+
+        function logout() {
+            currentMobile = "";
+            document.getElementById('mobile').value = "";
+            document.getElementById('otp').value = "";
+            document.getElementById('memberDetails').style.display = "none";
+            document.getElementById('mobileStep').style.display = "block";
+        }
+
+        function toggleLoading(buttonId, isLoading) {
+            const button = document.getElementById(buttonId);
+            const spinner = document.getElementById(`${buttonId}Spinner`);
+            const text = document.getElementById(`${buttonId}Text`);
+            
+            button.disabled = isLoading;
+            spinner.style.display = isLoading ? "inline-block" : "none";
+            text.textContent = isLoading ? 
+                (buttonId === 'sendOTPBtn' ? "Sending..." : "Verifying...") : 
+                (buttonId === 'sendOTPBtn' ? "OTP મેળવો" : "પ્રવેશ કરો");
+        }
+    </script>
+</body>
+</html>
+  </body>
+</html>
